@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-import argparse
 import asyncio
 import io
 import json
 import logging
+import os
 import socket
 
 from concurrent.futures import ThreadPoolExecutor
@@ -63,25 +63,6 @@ async def periodic(*, loop, executor):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument(
-        '--host',
-        dest='host',
-        help='server host listening',
-        type=str,
-        required=False,
-    )
-    parser.add_argument(
-        '--port',
-        dest='port',
-        help='server port',
-        type=int,
-        required=False,
-    )
-
-    args = parser.parse_args()
-
     logging.basicConfig(level=logging.DEBUG)
 
     asyncio.set_event_loop(None)
@@ -94,10 +75,14 @@ if __name__ == '__main__':
 
     handler = app.make_handler()
 
+    host = os.environ.get('HOST', '0.0.0.0')
+
+    port = int(os.environ.get('PORT', 5000))
+
     server = loop.create_server(
         handler,
-        args.host or '0.0.0.0',
-        args.port or 8111,
+        host,
+        port,
     )
 
     executor = ThreadPoolExecutor(max_workers=2)
