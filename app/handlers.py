@@ -15,7 +15,7 @@ class Handler:
         for obj in os.listdir(path):
             _path = os.path.join(path, obj)
 
-            if os.path.isfile(_path) or os.path.islink(_path):
+            if os.path.isfile(_path):
                 name, _ = os.path.splitext(obj)
 
                 with io.open(_path, mode='rt', encoding='utf-8') as fp:
