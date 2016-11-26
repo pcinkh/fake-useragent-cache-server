@@ -1,113 +1,86 @@
 #!/usr/bin/env python
 
 import asyncio
-import io
-import json
 import logging
 import os
-import socket
-
-from concurrent.futures import ThreadPoolExecutor
+import signal
 from functools import partial
-from urllib.error import URLError
 
 import uvloop
 from aiohttp import web
-from fake_useragent.settings import __version__ as fake_version
-from fake_useragent.utils import load as fake_get_data
+from fake_useragent import settings as fake_useragent_settings
+from yarl import URL
 
-from routes import setup_routes
+from .routes import setup_routes
+from .handlers import Handler
+from .background import heartbeat
 
-
-def refresh_cache():
-    with io.open(
-        'app/data/cached-{version}.json'.format(
-            version=fake_version,
-        ),
-        mode='w+',
-        encoding='utf-8',
-    ) as cache_data:
-        try:
-            print('Fetching data through fake-useragent...')
-
-            data = json.dumps(fake_get_data())
-
-        except (URLError, socket.error) as exc:
-            print('Error while fetching:', exc)
-
-        else:
-            print('Data fetched.')
-
-            if data:
-                print('Writing data...')
-
-                cache_data.write(data)
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
-async def periodic(*, loop, executor):
-    while True:
-        try:
-            loop.run_in_executor(
-                executor,
-                partial(refresh_cache),
-            )
-
-            delay = 60 * 60  # 1 hour
-
-            print('Sleeping for 1 hour...')
-
-            await asyncio.sleep(delay, loop=loop)
-
-        except asyncio.CancelledError:
-            break
-
-
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
-
+def main():
     asyncio.set_event_loop(None)
 
     loop = uvloop.new_event_loop()
 
-    app = web.Application(loop=loop)
+    handler = Handler(loop=loop)
+    _root = os.path.abspath(os.path.dirname(__file__))
+    handler.lookup_files(os.path.join(_root, 'data'))
 
-    setup_routes(app, loop=loop)
+    app = web.Application(
+        debug=False,
+        handler_factory=partial(
+            web.RequestHandlerFactory,
+            debug=False,
+            keep_alive_on=False,
+        ),
+        loop=loop,
+    )
 
-    handler = app.make_handler()
+    setup_routes(app, handler)
 
-    host = os.environ.get('HOST', '0.0.0.0')
-
-    port = int(os.environ.get('PORT', 5000))
+    handler = app.make_handler(access_log=None)
 
     server = loop.create_server(
         handler,
-        host,
-        port,
+        os.environ.get('HOST', '0.0.0.0'),
+        int(os.environ.get('PORT', 5000)),
     )
 
-    executor = ThreadPoolExecutor(max_workers=2)
+    url = URL(fake_useragent_settings.CACHE_SERVER).origin()
+
+    _heartbeat = loop.create_task(heartbeat(url, 10, 60, loop=loop))
+
+    srv = loop.run_until_complete(server)
+
+    loop.add_signal_handler(signal.SIGINT, loop.stop)
+    loop.add_signal_handler(signal.SIGTERM, loop.stop)
+    loop.add_signal_handler(signal.SIGQUIT, loop.stop)
 
     try:
-        _background = loop.create_task(periodic(loop=loop, executor=executor))
-
-        srv = loop.run_until_complete(server)
-
         loop.run_forever()
 
-    except KeyboardInterrupt:
-        _background.cancel()
+        _heartbeat.cancel()
 
-        loop.run_until_complete(_background)
+        try:
+            loop.run_until_complete(_heartbeat)
+        except asyncio.CancelledError:
+            pass
 
-    finally:
         srv.close()
 
         loop.run_until_complete(srv.wait_closed())
 
         loop.run_until_complete(app.shutdown())
 
-        loop.run_until_complete(handler.finish_connections(60.0))
+        loop.run_until_complete(handler.finish_connections(5.0))
 
         loop.run_until_complete(app.cleanup())
 
+    finally:
         loop.close()
+
+
+if __name__ == '__main__':
+    main()

@@ -1,11 +1,6 @@
-from functools import partial
-
-from views import browsers
-
-
-def setup_routes(app, *, loop):
+def setup_routes(app, handler):
     app.router.add_get(
         '/browsers/{version}',
-        partial(browsers, loop=loop),
+        handler.browsers,
         name='browsers',
     )
