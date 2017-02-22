@@ -27,15 +27,7 @@ def main():
     _root = os.path.abspath(os.path.dirname(__file__))
     handler.lookup_files(os.path.join(_root, 'data'))
 
-    app = web.Application(
-        debug=False,
-        handler_factory=partial(
-            web.RequestHandlerFactory,
-            debug=False,
-            keep_alive_on=False,
-        ),
-        loop=loop,
-    )
+    app = web.Application(loop=loop)
 
     setup_routes(app, handler)
 
