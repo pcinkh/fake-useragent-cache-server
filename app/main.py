@@ -8,7 +8,6 @@ from functools import partial
 
 import uvloop
 from aiohttp import web
-from fake_useragent import settings as fake_useragent_settings
 from yarl import URL
 
 from .routes import setup_routes
@@ -48,7 +47,7 @@ def main():
         int(os.environ.get('PORT', 5000)),
     )
 
-    url = URL(fake_useragent_settings.CACHE_SERVER).origin()
+    url = URL('https://fake-useragent.herokuapp.com/')
 
     _heartbeat = loop.create_task(heartbeat(url, 10, 60, loop=loop))
 
