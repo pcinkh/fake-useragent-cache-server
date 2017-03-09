@@ -1,13 +1,7 @@
-sudo: required
 dist: trusty
 language: python
 python:
   - "3.6"
-env:
-  global:
-    - DEBIAN_FRONTEND=noninteractive
-before_install:
-  - travis_retry sudo apt-get -y --force-yes update
 install:
   - pip install virtualenv
   - virtualenv env
@@ -25,7 +19,6 @@ script:
   - isort --check-only -rc app --diff
   - timeout --preserve-status 10 python -m app
 cache:
-  apt: true
   pip: true
 notifications:
   email: false
