@@ -7,9 +7,9 @@ import uvloop
 from aiohttp import web
 from yarl import URL
 
-from .routes import setup_routes
-from .handlers import Handler
 from .background import heartbeat
+from .handlers import Handler
+from .routes import setup_routes
 
 
 def _sigint(signum, frame):
