@@ -1,10 +1,7 @@
 #!/usr/bin/env python
-
 import asyncio
-import logging
 import os
 import signal
-from functools import partial
 
 import uvloop
 from aiohttp import web
@@ -14,8 +11,9 @@ from .routes import setup_routes
 from .handlers import Handler
 from .background import heartbeat
 
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+
+def _sigint(signum, frame):
+    os.kill(os.getpid(), signal.SIGINT)
 
 
 def main():
@@ -45,12 +43,13 @@ def main():
 
     srv = loop.run_until_complete(server)
 
-    loop.add_signal_handler(signal.SIGINT, loop.stop)
-    loop.add_signal_handler(signal.SIGTERM, loop.stop)
-    loop.add_signal_handler(signal.SIGQUIT, loop.stop)
+    signal.signal(signal.SIGTERM, _sigint)
 
     try:
-        loop.run_forever()
+        try:
+            loop.run_forever()
+        except KeyboardInterrupt:
+            pass
 
         _heartbeat.cancel()
 
@@ -70,4 +69,6 @@ def main():
         loop.run_until_complete(app.cleanup())
 
     finally:
+        loop.call_soon(loop.stop)
+        loop.run_forever()
         loop.close()

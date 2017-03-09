@@ -20,7 +20,9 @@ install:
   - pip install -U wheel
   - pip install -U Cython
   - pip install -r requirements.txt
-
+script:
+  - flake8 app
+  - isort --check-only -rc app --diff'
 cache:
   apt: true
   pip: true
