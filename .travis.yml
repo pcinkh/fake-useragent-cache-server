@@ -5,7 +5,7 @@ python:
 install:
   - pip install -r requirements.txt
 script:
-  - flake8 app
+  - flake8 --show-source app
   - isort --check-only -rc app --diff
   - timeout --preserve-status 10 python -m app
 cache:
