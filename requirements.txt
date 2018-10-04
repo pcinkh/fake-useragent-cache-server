@@ -12,6 +12,6 @@ packaging==18.0
 pycodestyle==2.4.0
 pyflakes==2.0.0
 pyparsing==2.2.2
-six==1.10.0
+six==1.11.0
 uvloop==0.8.0
 yarl==0.9.8
